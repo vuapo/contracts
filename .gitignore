@@ -7,3 +7,7 @@ typechain
 #Hardhat files
 cache
 artifacts
+contracts/SMALL_WRLD.sol
+test/SMALL_WRLD.json
+hardhat.config.js
+README.md

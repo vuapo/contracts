@@ -47,18 +47,16 @@ describe.only("Listings", function () {
     });
 
     it("Can list with Spot", async function () {
-        let price = await nft.calc_price();
-        await nft.mint([], {value: price});
+        let price = await nft.calc_price(1);
+        await nft.mint(1, [], false, {value: price});
         await listings.list(0, "San Jose, USA", 1500, "");
     });
 
     let medellin1_price = 800;
     let medellin2_price = 850;
     it("Can list", async function () {
-        for(let i = 0; i < 3; i++) {
-            let price = await nft.calc_price();
-            await nft.mint([], {value: price});
-        }
+        let price = await nft.calc_price(3);
+        await nft.mint(3, [], false, {value: price});
         await listings.list(1, "Medellin, Colombia", medellin1_price, "");
         await listings.list(2, "Medellin, Colombia", medellin2_price, "");
         await listings.list(3, "Mexico City, Mexico", 1200, "");
