@@ -26,7 +26,7 @@ describe.only("Listings", function () {
 
     it("Deploy contract", async function () {
 
-        const NFT = await ethers.getContractFactory("VUAPO");
+        const NFT = await ethers.getContractFactory("Spots");
         nft = await NFT.deploy("0x0000000000000000000000000000000000000000");
         await nft.deployed();
         await nft.start_sale();

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "hardhat/console.sol";
 
-contract VUAPO is ERC721A, Ownable
+contract Spots is ERC721A, Ownable
 {
     // ====== VARIABLES =======
     uint256 public total_sales = 0;

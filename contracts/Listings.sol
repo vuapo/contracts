@@ -4,11 +4,11 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "hardhat/console.sol";
-import "./VUAPO.sol";
+import "./Spots.sol";
 
 contract Listings is Ownable {
 
-    VUAPO public vuapo;
+    Spots public spots;
     ERC20 public stablecoin;
 
     uint256 public amount_of_bookings = 0;
@@ -17,13 +17,13 @@ contract Listings is Ownable {
     mapping(string => uint256[]) public listings_by_location;
     mapping(uint256 => uint256[]) public bookings_by_listing;
 
-    constructor(address payable _vuapo_address, address stablecoin_address) {
-        vuapo = VUAPO(_vuapo_address);
+    constructor(address payable spots_address, address stablecoin_address) {
+        spots = Spots(spots_address);
         stablecoin = ERC20(stablecoin_address);
     }
 
     function list(uint256 id, string memory place, uint256 cost, string memory metadata_url) public {
-        require(vuapo.ownerOf(id) == msg.sender, "You do not own this Spot");
+        require(spots.ownerOf(id) == msg.sender, "You do not own this Spot");
 
         // remove reference to old listing from old place
         uint256[] storage listings_of_old_place = listings_by_location[listings[id].location];
@@ -58,13 +58,13 @@ contract Listings is Ownable {
 
     function confirm_booking(uint256 booking_id) public {
         uint256 listing_id = bookings[booking_id].listing;
-        require(vuapo.ownerOf(listing_id) == msg.sender, "You do not own this Spot");
+        require(spots.ownerOf(listing_id) == msg.sender, "You do not own this Spot");
         bookings[booking_id].confirmed = true;
     }
 
     function refund_booking(uint256 booking_id) public {
         uint256 listing_id = bookings[booking_id].listing;
-        require(vuapo.ownerOf(listing_id) == msg.sender, "You do not own this Spot");
+        require(spots.ownerOf(listing_id) == msg.sender, "You do not own this Spot");
         _refund_booking(booking_id);
     }
 
@@ -87,14 +87,14 @@ contract Listings is Ownable {
         require(bookings[booking_id].refunded == false, "The funds for this booking have already been refunded");
         bookings[booking_id].paid_out = true;
         uint256 listing_id = bookings[booking_id].listing;
-        address payable receiver = payable(vuapo.ownerOf(listing_id));
+        address payable receiver = payable(spots.ownerOf(listing_id));
         uint256 amount = bookings[booking_id].amount;
         require(stablecoin.transferFrom(address(this), receiver, amount), "Could not pay out ERC20");
     }
 
     function open_dispute(uint256 booking_id) public {
         uint256 listing_id = bookings[booking_id].listing;
-        bool is_spot_owner = vuapo.ownerOf(listing_id) == msg.sender;
+        bool is_spot_owner = spots.ownerOf(listing_id) == msg.sender;
         bool is_booker = bookings[booking_id].guest == msg.sender;
         require(is_spot_owner || is_booker, "You neither own this Spot not made the booking");
         bookings[booking_id].dispute = true;

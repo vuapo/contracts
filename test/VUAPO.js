@@ -23,7 +23,7 @@ async function expect_error_message(f, error_message) {
     }
 }
 
-describe.only("VUAPO", function () {
+describe.only("Spots", function () {
 
     let nft, mint10;
     let leaf0, leaf1;
@@ -31,7 +31,7 @@ describe.only("VUAPO", function () {
 
     it("Deploy contract", async function () {
         [signer0, signer1, signer3] = await ethers.getSigners();
-        const NFT = await ethers.getContractFactory("VUAPO");
+        const NFT = await ethers.getContractFactory("Spots");
         nft = await NFT.deploy(signer0.address);
         await nft.deployed();
         expect(await nft.totalSupply()).to.equal(0);
