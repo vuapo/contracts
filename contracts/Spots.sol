@@ -16,11 +16,11 @@ contract Spots is ERC721A, Ownable
 
     // ====== SETTINGS =======
     uint256 public seconds_per_sale = 1 * 3600;
-    uint256 public price_base = 1030;
+    uint256 public price_base = 1050;
     uint256 public start_price = 0.005 ether;
 
     string private base_uri;
-    string public not_revealed_uri;
+    string public not_revealed_uri = "https://gateway.pinata.cloud/ipfs/QmYfvLErTYhteYKHxuqj29YAmy3J8MDwa3sipPjawDg37t";
     bool public revealed = false;
     bool public whitelist_enabled = false;
     bytes32 private whitelist;
@@ -38,15 +38,15 @@ contract Spots is ERC721A, Ownable
 
     constructor(address payable _withdrawal_address) ERC721A("VUAPO", "SPOT") {
         withdrawal_address = _withdrawal_address;
+        sale_start = block.timestamp;
     }
 
     // ============ PUBLIC FUNCTIONS ==============
 
     function mint(uint256 amount, bytes32[] memory proof, bool as_coupons) payable public {
-        require(sale_start > 0, "sale hasn't started yet");
         require(!whitelist_enabled || _verify(proof), "Address not whitelisted");
         uint256 total_price = calc_price(amount);
-        _handle_payment(amount);
+        _handle_payment(total_price);
         _mint(msg.sender, amount, as_coupons, total_price);
     }
 
@@ -88,7 +88,6 @@ contract Spots is ERC721A, Ownable
     }
 
     function execute_bids() public {
-        require(sale_start > 0, "sale hasn't started yet");
         uint256 price = calc_price(1);
         for(uint256 i = 0; i < bids.length; i++) {
             Bid storage bid = bids[i];
@@ -104,7 +103,6 @@ contract Spots is ERC721A, Ownable
     }
 
     function execute_plans() public {
-        require(sale_start > 0, "sale hasn't started yet");
         uint256 price = calc_price(1);
         for(uint256 i = 0; i < plans.length; i++) {
             DCAPlan storage plan = plans[i];
@@ -187,7 +185,6 @@ contract Spots is ERC721A, Ownable
     }
 
     function _calc_price_after_n_buys(uint256 n_buys) internal view returns(uint256) {
-        require(sale_start > 0, "sale hasn't started yet");
         uint256 sales_target = (block.timestamp - sale_start) / seconds_per_sale;
         int256 sales_lag = int256(total_sales) - int256(sales_target) + int256(n_buys);
         return start_price * _float_power(price_base, 3, sales_lag) / 1000;
@@ -222,6 +219,12 @@ contract Spots is ERC721A, Ownable
             address owner = old_contract.ownerOf(i);
             coupons[owner] += 1;
         }
+    }
+
+    function mint_coupons(address receiver, uint256 max_amount) public onlyOwner() {
+        uint256 amount = min_unsigned(max_amount, coupons[receiver]);
+        coupons[receiver] -= amount;
+        _safeMint(receiver, amount);
     }
 
     function set_start_price(uint256 _start_price) public onlyOwner {
@@ -284,25 +287,25 @@ contract Spots is ERC721A, Ownable
             return not_revealed_uri;
         }
     }
-}
 
-struct Bid {
-    address bidder;
-    uint256 price;
-    uint256 deposit;
-}
+    struct Bid {
+        address bidder;
+        uint256 price;
+        uint256 deposit;
+    }
 
-struct DCAPlan {
-    address address_;
-    uint256 deposit;
-    uint256 spent;
-    uint256 timestamp_from;
-    uint256 timestamp_to;
-}
+    struct DCAPlan {
+        address address_;
+        uint256 deposit;
+        uint256 spent;
+        uint256 timestamp_from;
+        uint256 timestamp_to;
+    }
 
-struct Purchase {
-    address address_;
-    uint256 amount;
-    uint256 price;
-    uint256 timestamp;
+    struct Purchase {
+        address address_;
+        uint256 amount;
+        uint256 price;
+        uint256 timestamp;
+    }
 }

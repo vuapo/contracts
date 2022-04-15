@@ -14,7 +14,6 @@ contract Listings is Ownable {
     uint256 public amount_of_bookings = 0;
     mapping(uint256 => Listing) public listings;
     mapping(uint256 => Booking) public bookings;
-    mapping(string => uint256[]) public listings_by_location;
     mapping(uint256 => uint256[]) public bookings_by_listing;
 
     constructor(address payable spots_address, address stablecoin_address) {
@@ -22,32 +21,13 @@ contract Listings is Ownable {
         stablecoin = ERC20(stablecoin_address);
     }
 
-    function list(uint256 id, string memory place, uint256 cost, string memory metadata_url) public {
+    function list(uint256 id, int256 latitude, int256 longitude, uint256 cost, string memory metadata_url) public {
         require(spots.ownerOf(id) == msg.sender, "You do not own this Spot");
-
-        // remove reference to old listing from old place
-        uint256[] storage listings_of_old_place = listings_by_location[listings[id].location];
-        for(uint256 i = 0; i < listings_of_old_place.length; i++) {
-            if(listings_of_old_place[i] == id) {
-                listings_of_old_place[i] = 0;
-                break;
-            }
-        }
-
-        // add new listing to new place
-        listings[id] = Listing(place, cost, metadata_url);
-        uint256[] storage listings_of_new_place = listings_by_location[place];
-        for(uint256 i = 0; i < listings_of_new_place.length; i++) {
-            if(listings_of_new_place[i] == 0) {
-                listings_of_new_place[i] = id;
-                return;
-            }
-        }
-        listings_of_new_place.push(id);
+        listings[id] = Listing(latitude, longitude, cost, metadata_url);
     }
 
     function book(uint256 listing_id, uint256 timestamp_from, uint256 nights, string memory message) public {
-        uint256 total_price = listings[listing_id].price * nights;
+        uint256 total_price = listings[listing_id].base_price * nights;
         require(stablecoin.allowance(msg.sender, address(this)) >= total_price, "Insufficient ERC20 allowance");
         require(stablecoin.transferFrom(msg.sender, address(this), total_price), "Could not transfer ERC20 to contract");
 
@@ -115,8 +95,9 @@ contract Listings is Ownable {
 }
 
 struct Listing {
-    string location;
-    uint256 price;
+    int256 latitude;
+    int256 longitude;
+    uint256 base_price;
     string metadata_url;
 }
 

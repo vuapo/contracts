@@ -56,7 +56,7 @@ describe.only("Spots", function () {
 
     it("Price increases", async function () {
         let price = await nft.calc_price(1);
-        expect(price/1e18).to.equal(0.00515);
+        expect(price/1e18).to.equal(0.00525);
         await nft.mint(1, [leaf1], false, {value: price});
         expect(await nft.totalSupply()).to.equal(2);
     });
@@ -118,7 +118,7 @@ describe.only("Spots", function () {
         let remainder = 1336;
         let deposit_input = (parseInt(await nft.calc_price(2)) + remainder)+'';
 
-        await nft.create_bid(price, {value: deposit_input});
+        await nft.create_bid(price+'', {value: deposit_input});
         let deposit_before = (await nft.bids(0))[2];
         expect(deposit_before).to.equal(deposit_input);
     });
@@ -152,7 +152,7 @@ describe.only("Spots", function () {
         await network.provider.send("evm_mine")
         await nft.execute_plans();
         let deposit_after = (await nft.plans(0))[1];
-        expect(deposit_after).to.equal(remainder);
+        expect(parseInt(deposit_after)).to.lessThan(remainder+20);
         expect(await nft.coupons(signer0.address)).to.equal(8+7);
     });
     
