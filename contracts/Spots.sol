@@ -17,13 +17,11 @@ contract Spots is ERC721A, Ownable
     // ====== SETTINGS =======
     uint256 public seconds_per_sale = 1 * 3600;
     uint256 public price_base = 1050;
-    uint256 public start_price = 0.005 ether;
+    uint256 public start_price = 4.586 ether;
 
     string private base_uri;
     string public not_revealed_uri = "https://gateway.pinata.cloud/ipfs/QmYfvLErTYhteYKHxuqj29YAmy3J8MDwa3sipPjawDg37t";
     bool public revealed = false;
-    bool public whitelist_enabled = false;
-    bytes32 private whitelist;
     address payable public withdrawal_address;
 
     mapping(address => uint256) public coupons;
@@ -43,8 +41,7 @@ contract Spots is ERC721A, Ownable
 
     // ============ PUBLIC FUNCTIONS ==============
 
-    function mint(uint256 amount, bytes32[] memory proof, bool as_coupons) payable public {
-        require(!whitelist_enabled || _verify(proof), "Address not whitelisted");
+    function mint(uint256 amount, bool as_coupons) payable public {
         uint256 total_price = calc_price(amount);
         _handle_payment(total_price);
         _mint(msg.sender, amount, as_coupons, total_price);
@@ -92,7 +89,7 @@ contract Spots is ERC721A, Ownable
         for(uint256 i = 0; i < bids.length; i++) {
             Bid storage bid = bids[i];
             if(bid.deposit >= price && bid.price >= price) {
-                uint256 amount = _calculate_purchase_maximum(bid.deposit);
+                uint256 amount = _calculate_purchase_maximum(bid.deposit, bid.price);
                 uint256 total_price = calc_price(amount);
                 bid.deposit -= total_price;
                 sales_revenue += total_price;
@@ -113,7 +110,7 @@ contract Spots is ERC721A, Ownable
             uint256 value_available = min_unsigned(plan.deposit, budget_per_second * seconds_since_start - plan.spent);
 
             if(value_available > price) {
-                uint256 amount = _calculate_purchase_maximum(value_available);
+                uint256 amount = _calculate_purchase_maximum(value_available, 1e30);
                 uint256 total_price = calc_price(amount);
                 plan.deposit -= total_price;
                 plan.spent += total_price;
@@ -124,14 +121,17 @@ contract Spots is ERC721A, Ownable
         }
     }
 
-    function _calculate_purchase_maximum(uint256 budget) internal view returns(uint256) {
+    function _calculate_purchase_maximum(uint256 budget, uint256 max_price) internal view returns(uint256) {
         uint256 amount = 0;
-        while(calc_price(amount) < budget && amount < 100) {
+
+        while(amount < 100) {
+            if(calc_price(amount+1) >= budget) {
+                break;
+            }
+            if(calc_price(amount+1) - calc_price(amount) > max_price) {
+                break;
+            }
             amount++;
-        }
-        // amount ends up being 1 larger than what can be afforded
-        if(amount > 1) {
-            amount -= 1;
         }
         return amount;
     }
@@ -190,11 +190,6 @@ contract Spots is ERC721A, Ownable
         return start_price * _float_power(price_base, 3, sales_lag) / 1000;
     }
 
-    function _verify(bytes32[] memory proof) internal view returns (bool) {
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender));
-        return MerkleProof.verify(proof, whitelist, leaf);
-    }
-
     function _float_power(uint256 base, uint256 base_decimals, int256 exponent) internal pure returns(uint256) {
         uint256 result = 10**base_decimals;
         if(exponent >= 0) {
@@ -213,12 +208,17 @@ contract Spots is ERC721A, Ownable
 
     // ============ OWNER FUNCTIONS ==============
 
+/*
     function airdrop_coupons_to_old_contract_owners(address old_contract_address) public onlyOwner() {
         ERC721A old_contract = ERC721A(old_contract_address);
         for(uint256 i = 0; i < old_contract.totalSupply(); i++) {
             address owner = old_contract.ownerOf(i);
             coupons[owner] += 1;
         }
+    }*/
+
+    function airdrop_coupons(address receiver, uint amount) public onlyOwner() {
+        coupons[receiver] += amount;
     }
 
     function mint_coupons(address receiver, uint256 max_amount) public onlyOwner() {
@@ -257,14 +257,6 @@ contract Spots is ERC721A, Ownable
         (bool success, ) = withdrawal_address.call{value: amount_to_withdraw}("");
         require(success, "Withdrawal failed");
         emit Withdrawal(amount_to_withdraw);
-    }
-
-    function set_whitelist(bytes32 _whitelist) external onlyOwner {
-        whitelist = _whitelist;
-    }
-
-    function flip_whitelist_enabled() public onlyOwner {
-        whitelist_enabled = !whitelist_enabled;
     }
 
     function start_sale() public onlyOwner {

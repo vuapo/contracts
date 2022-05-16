@@ -48,30 +48,20 @@ describe.only("Listings", function () {
 
     it("Can list with Spot", async function () {
         let price = await nft.calc_price(1);
-        await nft.mint(1, [], false, {value: price});
-        await listings.list(0, "San Jose, USA", 1500, "");
+        await nft.mint(1, false, {value: price});
+        await listings.list(0, 0, 0, 1500, "");
     });
 
     let medellin1_price = 800;
     let medellin2_price = 850;
+    let medellin1_id = 1;
+    let medellin2_id =  2;
     it("Can list", async function () {
         let price = await nft.calc_price(3);
-        await nft.mint(3, [], false, {value: price});
-        await listings.list(1, "Medellin, Colombia", medellin1_price, "");
-        await listings.list(2, "Medellin, Colombia", medellin2_price, "");
-        await listings.list(3, "Mexico City, Mexico", 1200, "");
-    });
-
-    let medellin1_id;
-    let medellin2_id;
-    it("Can look up by city", async function () {
-        const PRICE_POS_IN_LISTING = 1;
-        medellin1_id = await listings.listings_by_location("Medellin, Colombia", 0);
-        medellin2_id = await listings.listings_by_location("Medellin, Colombia", 1);
-        let medellin1 = await listings.listings(medellin1_id);
-        let medellin2 = await listings.listings(medellin2_id);
-        expect(medellin1['price']).to.equal(medellin1_price);
-        expect(medellin2['price']).to.equal(medellin2_price);
+        await nft.mint(3, false, {value: price});
+        await listings.list(medellin1_id, 0, 0, medellin1_price, "");
+        await listings.list(medellin2_id, 0, 0, medellin2_price, "");
+        await listings.list(3, 0, 0, 1200, "");
     });
 
     let booking_id;

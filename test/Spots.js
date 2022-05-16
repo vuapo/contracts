@@ -1,9 +1,6 @@
 const chai = require("chai");
 const chaiAlmost = require('chai-almost');
-const { utils, providers } = require("ethers");
-const { keccak256 } = require("ethers/lib/utils");
 const { ethers } = require("hardhat");
-const { MerkleTree } = require('merkletreejs');
 chai.use(chaiAlmost());
 let expect = chai.expect;
 
@@ -26,7 +23,6 @@ async function expect_error_message(f, error_message) {
 describe.only("Spots", function () {
 
     let nft, mint10;
-    let leaf0, leaf1;
     let signer0, signer1, signer3;
 
     it("Deploy contract", async function () {
@@ -37,34 +33,25 @@ describe.only("Spots", function () {
         expect(await nft.totalSupply()).to.equal(0);
     });
 
-    it("Can set whitelist", async function () {
-        leaf0 = keccak256(signer0.address);
-        leaf1 = keccak256(signer1.address);
-        let leaves = [leaf0, leaf1];
-        const merkleTree = new MerkleTree(leaves, keccak256, { hashLeaves: false, sortPairs: true });
-        await nft.set_whitelist(utils.arrayify(merkleTree.getHexRoot()));
-        await nft.flip_whitelist_enabled();
-    });
-
     it("Can mint", async function () {
         await nft.start_sale();
         let price = await nft.calc_price(1);
-        expect(price/1e18).to.equal(0.005);
-        await nft.mint(1, [leaf1], false, {value: price});
+        expect(price/1e18).to.equal(4.586);
+        await nft.mint(1, false, {value: price});
         expect(await nft.totalSupply()).to.equal(1);
     });
 
     it("Price increases", async function () {
         let price = await nft.calc_price(1);
-        expect(price/1e18).to.equal(0.00525);
-        await nft.mint(1, [leaf1], false, {value: price});
+        expect(price/1e18).to.equal(4.8153);
+        await nft.mint(1, false, {value: price});
         expect(await nft.totalSupply()).to.equal(2);
     });
     
     it("Can mint 10 NFTs at once", async function () {
         expect(await nft.totalSupply()).to.equal(2);
         let price = await nft.calc_price(10);
-        await nft.mint(10, [leaf1], false, {value: price+'' });
+        await nft.mint(10, false, {value: price+'' });
         expect(await nft.totalSupply()).to.equal(12);
         for(let i = 2; i < 12; i++) {
             expect(await nft.ownerOf(i)).to.equal(signer0.address);
@@ -79,7 +66,7 @@ describe.only("Spots", function () {
     it("Can buy coupons", async function () {
         expect(await nft.totalSupply()).to.equal(12);
         let price = await nft.calc_price(1);
-        await nft.mint(1, [leaf1], true, {value: price+'' });
+        await nft.mint(1, true, {value: price+'' });
         expect(await nft.totalSupply()).to.equal(12);
         let price_new = await nft.calc_price(1);
         expect(price_new > price, "Price did not increase");
@@ -101,16 +88,22 @@ describe.only("Spots", function () {
     });
     
     it("Can aidrop from old NFTs", async function () {
-        await nft.airdrop_coupons_to_old_contract_owners(nft.address);
-        let coupons = await nft.coupons(signer0.address);
-        expect(coupons).to.equal(13);
+        let coupons_airdropped = 7;
+        let coupons_before = await nft.coupons(signer0.address);
+        await nft.airdrop_coupons(signer0.address, coupons_airdropped);
+        let coupons_after = await nft.coupons(signer0.address);
+        expect(coupons_after - coupons_before).to.equal(coupons_airdropped);
     });
     
     it("Can transfer coupons", async function () {
-        let amount = 7;
-        await nft.transfer_coupons(signer1.address, amount);
-        expect(await nft.coupons(signer0.address)).to.equal(13-amount);
-        expect(await nft.coupons(signer1.address)).to.equal(amount);
+        let coupons_transferred = 7;
+        let coupons0_before = await nft.coupons(signer0.address);
+        let coupons1_before = await nft.coupons(signer1.address);
+        await nft.transfer_coupons(signer1.address, coupons_transferred);
+        let coupons0_after = await nft.coupons(signer0.address);
+        let coupons1_after = await nft.coupons(signer1.address);
+        expect(coupons0_after).to.equal(coupons0_before-coupons_transferred);
+        expect(coupons1_after).to.equal(coupons1_before+coupons_transferred);
     });
     
     it("Create bid", async function () {
@@ -124,11 +117,12 @@ describe.only("Spots", function () {
     });
     
     it("Execute bids", async function () {
-        expect(await nft.coupons(signer0.address)).to.equal(6);
+        let coupons_before = await nft.coupons(signer0.address);
         await nft.execute_bids();
+        let coupons_after = await nft.coupons(signer0.address);
+        expect(coupons_after-coupons_before).to.equal(2);
         let deposit_after = (await nft.bids(0))[2];
-        expect(deposit_after).to.equal(remainder);
-        expect(await nft.coupons(signer0.address)).to.equal(6+2);
+        expect(parseInt(deposit_after)).to.lessThan(2*remainder);
     });
 
     let remainder = 1336;
@@ -143,8 +137,10 @@ describe.only("Spots", function () {
     it("Execute plan", async function () {
         await network.provider.send("evm_increaseTime", [30]);
         await network.provider.send("evm_mine");
+        let coupons_before = await nft.coupons(signer0.address);
         await nft.execute_plans();
-        expect(await nft.coupons(signer0.address)).to.equal(8+3);
+        let coupons_after = await nft.coupons(signer0.address);
+        expect(coupons_after - coupons_before).to.equal(3);
     });
     
     it("Plans are not executed beyond budget.", async function () {
