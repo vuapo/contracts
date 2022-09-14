@@ -3,9 +3,9 @@ const { utils } = require("ethers");
 
 require("@nomiclabs/hardhat-waffle");
 
-const SPOTS_ADDRESS = "0x8e597adc758c72ee13bccff2a518f1f9e2f49c1f" // "0x8e597adc758c72ee13bccff2a518f1f9e2f49c1f" "0xFeBaf772e68da55Cc9cC1E516679227d1a13B843"
-const USDT_ADDRESS = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F";
-const LISTINGS_ADDRESS = "0xfA1492de7a52E261A71363B7eAff517BE4118979";
+const SPOTS_ADDRESS = "0xFeBaf772e68da55Cc9cC1E516679227d1a13B843" // "0x8e597adc758c72ee13bccff2a518f1f9e2f49c1f" "0xFeBaf772e68da55Cc9cC1E516679227d1a13B843"
+const USDT_ADDRESS = "0x3c2b8be99c50593081eaa2a724f0b8285f5aba8f";
+const LISTINGS_ADDRESS = "0xCf83Ba195627bDbFA680c104cdD85ec4290B5e4B";
 
 const WITHDRAWAL_ADDRESS = "0x6A962a736Bea41500990346858BDa7D3f2567875";
 
@@ -28,6 +28,35 @@ async function list_all_owners() {
     }
     return owners;
 }
+
+task("deploy_small", "Deploys the contract", async (taskArgs, hre) => {
+    const Contract = await hre.ethers.getContractFactory("SMALL_WRLD");
+    const contract = await Contract.deploy(WITHDRAWAL_ADDRESS, WITHDRAWAL_ADDRESS);
+    await contract.deployed();
+    console.log("SMALL_WRLD deployed to:", contract.address);
+});
+
+task("small_ipfs", "Deploys the contract", async (taskArgs, hre) => {
+    const Contract = await hre.ethers.getContractFactory("SMALL_WRLD");
+    const contract = await Contract.attach("0x1B72db33b8c8A6fd64d1683d7328A4E6BE7Bc678");
+    console.log(await contract.tokenURI(739));
+});
+
+task("set_root", "Sets the whitelist merkle tree root")
+.addParam("root", "The merkle tree root")
+.setAction(async (taskArgs, hre) => {
+    const Contract = await hre.ethers.getContractFactory("SMALL_WRLD");
+    let contract = Contract.attach("0x9C20BDD24f7dC027665958Cffc00301b46586776");
+    await contract.setRoot(utils.arrayify(taskArgs.root));
+    console.log("Whitelist root set.");
+});
+
+task("flip_presale_state", "...")
+.setAction(async (taskArgs, hre) => {
+    const Contract = await hre.ethers.getContractFactory("SMALL_WRLD");
+    let contract = Contract.attach("0x9C20BDD24f7dC027665958Cffc00301b46586776");
+    await contract.flipPreSaleState();
+});
 
 task("deploy", "Deploys the contract", async (taskArgs, hre) => {
     const Contract = await hre.ethers.getContractFactory("Spots");
@@ -89,6 +118,17 @@ task("list_all_owners", "Prints all owner addresses of a token")
     let owners = await list_all_owners();
     console.log(owners);
 });
+
+task("purchases", "Prints all credits by owner")
+.setAction(async (taskArgs, hre) => {
+    let contract = await get_spots_contract();
+    let purchases_length = await contract.purchases_length();
+
+    for(let i = 0; i < purchases_length; i++) {
+        let purchase = await contract.purchases(i);
+        console.log("#" +i+ ": " + purchase);
+    }
+})
 
 task("list_all_credits", "Prints all credits by owner")
 .setAction(async (taskArgs, hre) => {
@@ -302,6 +342,10 @@ module.exports = {
   networks: {
     rinkeby: {
         url: "https://rinkeby.infura.io/v3/dabf0b8c9f3f473589b965a13b87448f",
+        accounts: ["0xe2a9691f3452159791639d26c01916d4640ac764c04cd0ebf90311b7d27f410d"] // 0xc6b9d812efac46cc5ee1256f1ea24006fcdf9aba
+    },
+    ethereum: {
+        url: "https://mainnet.infura.io/v3/",
         accounts: ["0xe2a9691f3452159791639d26c01916d4640ac764c04cd0ebf90311b7d27f410d"] // 0xc6b9d812efac46cc5ee1256f1ea24006fcdf9aba
     },
     matic: {
